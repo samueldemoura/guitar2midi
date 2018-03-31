@@ -2,7 +2,7 @@
 #include "GTM.h"
 
 #define FFT_SIZE 8196
-#define MIDI_TIME_MULT 1 // until proper BPM is used, slow down clip with multiplier
+#define MIDI_TIME_MULT 8 // until proper BPM is used, slow down clip with multiplier
 
 int main(int argc, char *argv[]) {
 	if (argc != 2) {
@@ -29,29 +29,14 @@ int main(int argc, char *argv[]) {
 		);
 
 	// Prepare to read audio samples
-	double average_power;
 	double samples[FFT_SIZE];
-	sf_count_t samples_read;
 
 	int offset = 0;
-	while (true) {
-		sf_seek(sf, 256*offset, SEEK_SET); // TODO: test what chunk size is best
-		samples_read = sf_read_double(sf, &samples[0], FFT_SIZE);
+	while (sf_read_double(sf, &samples[0], FFT_SIZE)) {
+		sf_seek(sf, 2048*offset, SEEK_SET); // TODO: test what chunk size is best
 
-		// Process samples
-		average_power = gtm.processSamples(&samples[0]);
-		if (average_power > 10) {
-			#ifdef DEBUG
-				fprintf(stderr,
-				"=> Skipping noisy sample (av. power %.2f at offset %d)\n",
-				average_power, offset
-				);
-			#endif
-
-			++offset;
-			continue;
-		}
-
+		// Process samples and analyse
+		gtm.processSamples(&samples[0]);
 		gtm.analyseSpectrum();
 
 		// Handle MIDI events
@@ -62,28 +47,13 @@ int main(int argc, char *argv[]) {
 			if (e.pitch+12 > 127) continue;
 
 			printf("1, %d, %s, 0, %d, %d\n",
-				offset*MIDI_TIME_MULT,
+				offset * MIDI_TIME_MULT,
 				e.type ? "Note_off_c" : "Note_on_c",
 				e.pitch + 12,
 				e.velocity
 				);
-
-			#ifdef DEBUG
-				fprintf(stderr, "=> note%s Event! MIDI note %d at sample offset %d\n",
-					e.type ? "Off" : "On", e.pitch, offset
-					);
-			#endif
 		}
 
-		// Get out of loop when done reading audio file
-		if (!samples_read) {
-			#ifdef DEBUG
-				fprintf(stderr, "=> Program done at sample offset %d\n", offset);
-			#endif
-
-			break;
-		}
-		
 		++offset;
 	}
 

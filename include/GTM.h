@@ -13,7 +13,7 @@ class GTM {
 		bool isPeak(int index, double threshold, bool dbfs);
 		bool hasHarmonics(int initial_index);
 		unsigned char freqToNote(double input);
-		double processSamples(double *input);
+		void processSamples(double *input);
 		void analyseSpectrum();
 
 		std::vector<Event> event_list;
@@ -21,7 +21,9 @@ class GTM {
 	//private:
 		fftw_complex *fft_in, *fft_out;
 		fftw_plan fft_plan;
-		double *dft, *dft_log;
+		double *dft, *dft_dbfs;
+
+		double mean_raw, mean_dbfs, sd_raw, sd_dbfs, peak_raw, peak_dbfs;
 
 		unsigned int fft_size, samplerate;
 		unsigned int slope_threshold, sustain_threshold;
